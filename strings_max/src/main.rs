@@ -1,10 +1,11 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{HashMap, BTreeMap, BTreeSet};
 
 fn main() {
     println!("Hello, world!");
 }
 
 fn mix(s1: &str, s2: &str) -> String {
+    println!("{}", s1);
     let hash1 = get_hash(s1);
     let mut hash2 = get_hash(s2);
 
@@ -13,7 +14,6 @@ fn mix(s1: &str, s2: &str) -> String {
     let mut count=0;
     println!("{:?} {:?}", hash1, hash2);
     for (ch, count1) in hash1 {
-        let mut current_vec: Vec<(char, char)> = Vec::new();
 
         if hash2.contains_key(&ch) {
             let count2 = hash2[&ch];
@@ -29,24 +29,59 @@ fn mix(s1: &str, s2: &str) -> String {
             s = '1';
             count = count1;
         }
-        current_vec.push((s, ch));
-        tree_map.insert(count, current_vec);
+
+        if tree_map.contains_key(&count) {
+            tree_map.get_mut(&count).unwrap().push((ch, s));
+        }
+        else {
+            let mut current_vec = Vec::new();
+            current_vec.push((ch, s));
+            tree_map.insert(count, current_vec);
+        }
+        println!("{:?}", tree_map);
     }
 
     for (ch, count) in hash2 {
-        let mut current_vec: Vec<(char, char)> = Vec::new();
-        current_vec.push(('2', ch));
-        tree_map.insert(count, current_vec);
+        if tree_map.contains_key(&count) {
+            tree_map.get_mut(&count).unwrap().push((ch, '2'));
+        }
+        else{
+            let mut current_vec = Vec::new();
+            current_vec.push((ch, '2'));
+            tree_map.insert(count, current_vec);
+        }
     }
 
     let mut result = String::new();
-    for (&count, vec) in tree_map.range(..) {
-        for (head, ch) in vec {
-            result.push(*head);
-            result.push(':');
-            result.push_str(&ch.to_string().repeat(count as usize));
+    for (&count, vec) in tree_map.range(..).rev() {
+        if vec.len() == 1 {
+            let (ch, head) = vec[0];
+            let mut tmp_str = String::new();
+            tmp_str.push(head);
+            tmp_str.push(':');
+            tmp_str.push_str(&ch.to_string().repeat(count as usize));
+            result.push_str(&tmp_str);
             result.push('/');
         }
+        else {
+            let mut str_set = BTreeSet::new();
+            for (ch, head) in vec {
+                let mut tmp_str = String::new();
+                tmp_str.push(*head);
+                tmp_str.push(':');
+                tmp_str.push_str(&ch.to_string().repeat(count as usize));
+                str_set.insert(tmp_str);
+            }
+
+            for strng in str_set {
+                result.push_str(&strng);
+                result.push('/');
+            }
+        }
+    }
+
+    if result.is_empty() {
+        return result;
     }
     let len = result.len();
     result.split_off(len-1);
@@ -56,6 +91,10 @@ fn mix(s1: &str, s2: &str) -> String {
 fn get_hash(s: &str) -> HashMap<char, i32> {
     let mut hash: HashMap<char, i32> = HashMap::new();
     for ch in s.chars() {
+        if !ch.is_alphabetic() || ch.is_uppercase() {
+            continue;
+        }
+
         if hash.contains_key(&ch) {
             *hash.get_mut(&ch).unwrap() += 1;
         }
@@ -63,7 +102,12 @@ fn get_hash(s: &str) -> HashMap<char, i32> {
             hash.insert(ch, 1);
         }
     }
-    hash
+    let mut hash_ret: HashMap<char, i32> = HashMap::new();
+    for (ch, count) in hash.iter()
+        .filter(|&t| if *t.1 == 1 {false} else {true}) {
+        hash_ret.insert(*ch, *count);
+    }
+    hash_ret
 }
 
 #[cfg(test)]
